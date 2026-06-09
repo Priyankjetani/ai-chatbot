@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Chatbot</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',sans-serif;background:#0d0d0f;color:#e0e0e0;height:100vh;display:flex;align-items:center;justify-content:center;}
+
+  /* ── SELECTOR SCREEN ── */
+  .selector{width:100%;max-width:520px;padding:20px;text-align:center;}
+  .selector h1{font-size:28px;font-weight:700;color:#fff;margin-bottom:8px;}
+  .selector p{color:#666;font-size:14px;margin-bottom:36px;}
+
+  .model-cards{display:flex;flex-direction:column;gap:14px;}
+  .model-card{
+    display:flex;align-items:center;gap:16px;
+    padding:18px 22px;border-radius:16px;
+    border:1px solid #2a2a35;background:#131316;
+    cursor:pointer;transition:all .2s;text-align:left;
+  }
+  .model-card:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.4);}
+  .model-card.gpt:hover{border-color:#10a37f;box-shadow:0 8px 30px rgba(16,163,127,.15);}
+  .model-card.claude:hover{border-color:#cc785c;box-shadow:0 8px 30px rgba(204,120,92,.15);}
+  .model-card.gemini:hover{border-color:#4285f4;box-shadow:0 8px 30px rgba(66,133,244,.15);}
+
+  .model-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+  .gpt .model-icon{background:linear-gradient(135deg,#10a37f,#1a7a5e);}
+  .claude .model-icon{background:linear-gradient(135deg,#cc785c,#b85c3a);}
+  .gemini .model-icon{background:linear-gradient(135deg,#4285f4,#0d47a1);}
+
+  .model-info h3{font-size:16px;font-weight:600;color:#fff;}
+  .model-info p{font-size:12px;color:#666;margin-top:3px;}
+  .model-badge{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600;flex-shrink:0;}
+  .badge-free{background:#16a34a22;color:#4ade80;border:1px solid #16a34a55;}
+  .badge-paid{background:#dc262622;color:#f87171;border:1px solid #dc262655;}
+
+  /* ── CHAT SCREEN ── */
+  .chat-wrapper{width:100%;max-width:780px;height:92vh;display:flex;flex-direction:column;border-radius:20px;border:1px solid #2a2a35;overflow:hidden;display:none;}
+
+  .chat-header{padding:16px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #2a2a35;}
+  .header-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+  .header-info h2{font-size:15px;font-weight:600;color:#fff;}
+  .header-info span{font-size:11px;}
+  .status-dot{width:8px;height:8px;background:#22c55e;border-radius:50%;margin-left:auto;box-shadow:0 0 6px #22c55e;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .back-btn{background:#2a2a35;border:none;color:#aaa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;margin-right:6px;}
+  .back-btn:hover{background:#3a3a48;color:#fff;}
+  .clear-btn{background:#2a2a35;border:none;color:#aaa;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;}
+  .clear-btn:hover{background:#3a3a48;color:#fff;}
+
+  .chat-messages{flex:1;overflow-y:auto;padding:22px 18px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;}
+  .chat-messages::-webkit-scrollbar{width:4px;}
+  .chat-messages::-webkit-scrollbar-thumb{background:#3a3a48;border-radius:4px;}
+
+  .message{display:flex;gap:12px;max-width:85%;animation:fadeIn .3s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .message.user{align-self:flex-end;flex-direction:row-reverse;}
+  .message.bot{align-self:flex-start;}
+  .msg-avatar{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px;}
+  .msg-bubble{padding:11px 15px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;}
+  .bot .msg-bubble{background:#1e1e2a;border:1px solid #2a2a40;border-top-left-radius:4px;color:#ddd;}
+  .user .msg-bubble{border-top-right-radius:4px;color:#fff;}
+  .msg-content{display:flex;flex-direction:column;}
+  .user .msg-content{align-items:flex-end;}
+  .msg-time{font-size:10px;color:#555;margin-top:4px;padding:0 4px;}
+  .user .msg-time{text-align:right;}
+
+  .typing-indicator{display:flex;gap:5px;padding:4px 2px;}
+  .typing-indicator span{width:7px;height:7px;border-radius:50%;animation:bounce 1.2s infinite;}
+  .typing-indicator span:nth-child(2){animation-delay:.2s}
+  .typing-indicator span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+
+  .chat-input-area{padding:14px 18px;border-top:1px solid #2a2a35;display:flex;gap:10px;align-items:flex-end;}
+  .input-box{flex:1;background:#0d0d0f;border:1px solid #2a2a40;border-radius:14px;padding:11px 15px;color:#e0e0e0;font-size:14px;resize:none;max-height:120px;outline:none;font-family:inherit;line-height:1.5;transition:border .2s;}
+  .input-box::placeholder{color:#444;}
+  .send-btn{width:44px;height:44px;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s,opacity .15s;}
+  .send-btn:hover{transform:scale(1.07);}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .send-btn svg{width:18px;height:18px;fill:white;}
+
+  .error-bubble{color:#f87171;}
+
+  /* model-specific colors */
+  .theme-gpt .chat-header{background:#0d1f1a;}
+  .theme-gpt .chat-wrapper{box-shadow:0 0 50px rgba(16,163,127,.12);}
+  .theme-gpt .input-box:focus{border-color:#10a37f;}
+  .theme-gpt .send-btn{background:linear-gradient(135deg,#10a37f,#1a7a5e);}
+  .theme-gpt .typing-indicator span{background:#10a37f;}
+  .theme-gpt .user .msg-bubble{background:linear-gradient(135deg,#10a37f,#1a7a5e);}
+
+  .theme-claude .chat-header{background:#1f1510;}
+  .theme-claude .chat-wrapper{box-shadow:0 0 50px rgba(204,120,92,.12);}
+  .theme-claude .input-box:focus{border-color:#cc785c;}
+  .theme-claude .send-btn{background:linear-gradient(135deg,#cc785c,#b85c3a);}
+  .theme-claude .typing-indicator span{background:#cc785c;}
+  .theme-claude .user .msg-bubble{background:linear-gradient(135deg,#cc785c,#b85c3a);}
+
+  .theme-gemini .chat-header{background:#0d1220;}
+  .theme-gemini .chat-wrapper{box-shadow:0 0 50px rgba(66,133,244,.12);}
+  .theme-gemini .input-box:focus{border-color:#4285f4;}
+  .theme-gemini .send-btn{background:linear-gradient(135deg,#4285f4,#0d47a1);}
+  .theme-gemini .typing-indicator span{background:#4285f4;}
+  .theme-gemini .user .msg-bubble{background:linear-gradient(135deg,#4285f4,#0d47a1);}
+</style>
+</head>
+<body>
+
+<!-- SELECTOR SCREEN -->
+<div class="selector" id="selectorScreen">
+  <h1>Choose Your AI</h1>
+  <p>Select a model to start chatting</p>
+  <div class="model-cards">
+
+    <div class="model-card gpt" onclick="startChat('gpt')">
+      <div class="model-icon">🟢</div>
+      <div class="model-info">
+        <h3>ChatGPT</h3>
+        <p>OpenAI · GPT-4o · Great for general tasks</p>
+      </div>
+      <span class="model-badge badge-paid">Paid</span>
+    </div>
+
+    <div class="model-card claude" onclick="startChat('claude')">
+      <div class="model-icon">🟠</div>
+      <div class="model-info">
+        <h3>Claude</h3>
+        <p>Anthropic · Claude Haiku · Fast & smart</p>
+      </div>
+      <span class="model-badge badge-paid">Paid</span>
+    </div>
+
+    <div class="model-card gemini" onclick="startChat('gemini')">
+      <div class="model-icon">🔵</div>
+      <div class="model-info">
+        <h3>Gemini</h3>
+        <p>Google · Gemini 1.5 Flash · Free tier available</p>
+      </div>
+      <span class="model-badge badge-free">Free</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- CHAT SCREEN -->
+<div class="chat-wrapper" id="chatScreen">
+  <div class="chat-header" id="chatHeader">
+    <div class="header-avatar" id="headerAvatar"></div>
+    <div class="header-info">
+      <h2 id="headerName"></h2>
+      <span id="headerSub"></span>
+    </div>
+    <div class="status-dot"></div>
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="clear-btn" onclick="clearChat()">Clear</button>
+  </div>
+  <div class="chat-messages" id="messages"></div>
+  <div class="chat-input-area">
+    <textarea class="input-box" id="userInput" placeholder="Type a message..." rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const models = {
+  gpt: {
+    name: 'ChatGPT',
+    sub: 'OpenAI · GPT-4o Mini',
+    avatar: '🟢',
+    theme: 'theme-gpt',
+    accent: '#10a37f',
+    system: 'You are ChatGPT, a helpful AI assistant made by OpenAI. Be friendly, clear and concise.',
+    apiModel: 'gpt-4o-mini',    // swap in your OpenAI key on backend
+    greeting: "Hi! I'm ChatGPT. How can I help you today? 😊"
+  },
+  claude: {
+    name: 'Claude',
+    sub: 'Anthropic · Haiku',
+    avatar: '🟠',
+    theme: 'theme-claude',
+    accent: '#cc785c',
+    system: 'You are Claude, a helpful AI assistant made by Anthropic. Be friendly, clear and concise.',
+    apiModel: 'claude-haiku-4-5-20251001',
+    greeting: "Hi! I'm Claude by Anthropic. Ask me anything! 🧡"
+  },
+  gemini: {
+    name: 'Gemini',
+    sub: 'Google · Gemini 1.5 Flash (Free)',
+    avatar: '🔵',
+    theme: 'theme-gemini',
+    accent: '#4285f4',
+    system: 'You are Gemini, a helpful AI assistant made by Google. Be friendly, clear and concise.',
+    apiModel: 'gemini-1.5-flash',
+    greeting: "Hi! I'm Gemini by Google. Let's chat! 💙"
+  }
+};
+
+let currentModel = null;
+let history = [];
+let loading = false;
+
+const selectorEl  = document.getElementById('selectorScreen');
+const chatEl      = document.getElementById('chatScreen');
+const messagesEl  = document.getElementById('messages');
+const inputEl     = document.getElementById('userInput');
+const sendBtn     = document.getElementById('sendBtn');
+
+function getTime(){ return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+
+function startChat(modelKey) {
+  currentModel = models[modelKey];
+  history = [];
+
+  // Apply theme to body
+  document.body.className = currentModel.theme;
+
+  // Set header
+  document.getElementById('headerAvatar').textContent = currentModel.avatar;
+  document.getElementById('headerName').textContent   = currentModel.name;
+  document.getElementById('headerSub').textContent    = currentModel.sub;
+  document.getElementById('headerSub').style.color    = currentModel.accent;
+
+  // Show chat, hide selector
+  selectorEl.style.display = 'none';
+  chatEl.style.display = 'flex';
+  messagesEl.innerHTML = '';
+
+  // Greeting message
+  addMessage('bot', currentModel.greeting);
+  inputEl.focus();
+}
+
+function goBack() {
+  chatEl.style.display = 'none';
+  selectorEl.style.display = 'block';
+  document.body.className = '';
+  currentModel = null;
+  history = [];
+}
+
+function clearChat() {
+  history = [];
+  messagesEl.innerHTML = '';
+  addMessage('bot', currentModel.greeting);
+}
+
+function addMessage(role, text, isError=false) {
+  const isUser = role === 'user';
+  const d = document.createElement('div');
+  d.className = `message ${role}`;
+  d.innerHTML = `
+    <div class="msg-avatar" style="background:${isUser?'#1e1e2a':currentModel.accent+'33'}">${isUser?'👤':currentModel.avatar}</div>
+    <div class="msg-content">
+      <div class="msg-bubble ${isError?'error-bubble':''}">${text.replace(/\n/g,'<br>')}</div>
+      <div class="msg-time">${getTime()}</div>
+    </div>`;
+  messagesEl.appendChild(d);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showTyping() {
+  const d = document.createElement('div');
+  d.className='message bot'; d.id='typing';
+  d.innerHTML=`
+    <div class="msg-avatar" style="background:${currentModel.accent}33">${currentModel.avatar}</div>
+    <div class="msg-content"><div class="msg-bubble">
+      <div class="typing-indicator"><span></span><span></span><span></span></div>
+    </div></div>`;
+  messagesEl.appendChild(d);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function hideTyping(){ const t=document.getElementById('typing'); if(t)t.remove(); }
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if(!text||loading) return;
+
+  loading=true; sendBtn.disabled=true;
+  inputEl.value=''; inputEl.style.height='auto';
+
+  addMessage('user', text);
+  history.push({role:'user', content:text});
+  showTyping();
+
+  try {
+    // ── calls your Flask backend ──
+    // Flask will route to correct API based on model name
+    const res = await fetch('/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messages: history,
+        model: currentModel.apiModel,
+        system: currentModel.system
+      })
+    });
+
+    const data = await res.json();
+    hideTyping();
+
+    if(!res.ok){
+      addMessage('bot', `⚠️ ${data.error||'Something went wrong.'}`, true);
+    } else {
+      addMessage('bot', data.reply);
+      history.push({role:'assistant', content:data.reply});
+    }
+
+  } catch(err) {
+    hideTyping();
+    addMessage('bot','⚠️ Cannot reach server. Is Flask running?', true);
+  }
+
+  loading=false; sendBtn.disabled=false; inputEl.focus();
+}
+</script>
+</body>
+</html>
